@@ -4,26 +4,28 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.luxoft.bankapp.exceptions.ClientExistsException;
 import com.luxoft.bankapp.utils.ClientRegistrationListener;
 
 public class Bank {
-	
-	private final List<Client> clients = new ArrayList<Client>();
+
+	private final Set<Client> clients = new HashSet<Client>();
 	private final List<ClientRegistrationListener> listeners = new ArrayList<ClientRegistrationListener>();
-	
+
 	private int printedClients = 0;
 	private int emailedClients = 0;
 	private int debuggedClients = 0;
-	
+
 	public Bank() {
 		listeners.add(new PrintClientListener());
 		listeners.add(new EmailNotificationListener());
 		listeners.add(new DebugListener());
 	}
-	
+
 	public int getPrintedClients() {
 		return printedClients;
 	}
@@ -35,53 +37,49 @@ public class Bank {
 	public int getDebuggedClients() {
 		return debuggedClients;
 	}
-	
+
 	public void addClient(final Client client) throws ClientExistsException {
-    	if (clients.contains(client)) {
-    		throw new ClientExistsException("Client already exists into the bank");
-    	} 
-    		
-    	clients.add(client);
-        notify(client);
+		boolean added = clients.add(client);
+		if (!added) {
+			throw new ClientExistsException("Client already exists into the bank");
+		}
+		notify(client);
 	}
-	
+
 	private void notify(Client client) {
-        for (ClientRegistrationListener listener: listeners) {
-            listener.onClientAdded(client);
-        }
-    }
-	
-	public List<Client> getClients() {
-		return Collections.unmodifiableList(clients);
+		for (ClientRegistrationListener listener : listeners) {
+			listener.onClientAdded(client);
+		}
 	}
-	
+
+	public Set<Client> getClients() {
+		return Collections.unmodifiableSet(clients);
+	}
+
 	class PrintClientListener implements ClientRegistrationListener {
-		@Override 
+		@Override
 		public void onClientAdded(Client client) {
-	        System.out.println("Client added: " + client.getName());
-	        printedClients++;
-	    }
+			System.out.println("Client added: " + client.getName());
+			printedClients++;
+		}
 
 	}
-	
+
 	class EmailNotificationListener implements ClientRegistrationListener {
-		@Override 
+		@Override
 		public void onClientAdded(Client client) {
-	        System.out.println("Notification email for client " + client.getName() + " to be sent");
-	        emailedClients++;
-	    }
+			System.out.println("Notification email for client " + client.getName() + " to be sent");
+			emailedClients++;
+		}
 	}
-	
+
 	class DebugListener implements ClientRegistrationListener {
-        @Override 
-        public void onClientAdded(Client client) {
-            System.out.println("Client " + client.getName() + " added on: " + DateFormat.getDateInstance(DateFormat.FULL).format(new Date()));
-            debuggedClients++;
-        }
-    }
+		@Override
+		public void onClientAdded(Client client) {
+			System.out.println("Client " + client.getName() + " added on: " +
+					DateFormat.getDateInstance(DateFormat.FULL).format(new Date()));
+			debuggedClients++;
+		}
+	}
 
 }
-
-
-
-
