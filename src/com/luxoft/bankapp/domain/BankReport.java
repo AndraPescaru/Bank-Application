@@ -37,7 +37,9 @@ public class BankReport {
 
     public static SortedSet<Account> getAccountsSortedBySum(Bank bank) {
         SortedSet<Account> sorted =
-                new TreeSet<>(Comparator.comparingDouble(Account::getBalance));
+                new TreeSet<>(Comparator
+                        .comparingDouble(Account::getBalance)
+                        .thenComparingInt(Account::getId));
         for (Client c : bank.getClients()) {
             sorted.addAll(c.getAccounts());
         }
@@ -46,14 +48,11 @@ public class BankReport {
 
     public static double getBankCreditSum(Bank bank) {
         double credit = 0;
-
         for (Client c : bank.getClients()) {
             for (Account a : c.getAccounts()) {
                 if (a instanceof CheckingAccount) {
                     CheckingAccount ca = (CheckingAccount) a;
-                    // overdraft used = max(0, -(balance))
-                    double overdraftUsed = Math.max(0, -ca.getBalance());
-                    credit += overdraftUsed;
+                    credit += ca.getOverdraft();   // credit acordat = overdraft
                 }
             }
         }
@@ -69,11 +68,10 @@ public class BankReport {
     }
 
     public static Map<String, List<Client>> getClientsByCity(Bank bank) {
-        Map<String, List<Client>> map = new TreeMap<>(); // TreeMap = sorted by key alphabetical
+        Map<String, List<Client>> map = new TreeMap<>();
 
         for (Client c : bank.getClients()) {
-            String city = c.getCity();   // client must have getCity()
-
+            String city = c.getCity();
             map.putIfAbsent(city, new ArrayList<>());
             map.get(city).add(c);
         }
