@@ -11,9 +11,16 @@ public class Client {
 
 	private Set<Account> accounts = new HashSet<Account>();
 
-	public Client(String name, Gender gender) {
+	private String city;
+
+	public Client(String name, Gender gender, String city) {
 		this.name = name;
 		this.gender = gender;
+		this.city = city;
+	}
+
+	public String getCity() {
+		return city;
 	}
 
 	public void addAccount(final Account account) {
