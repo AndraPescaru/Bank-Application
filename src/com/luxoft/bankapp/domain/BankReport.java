@@ -1,16 +1,22 @@
 package com.luxoft.bankapp.domain;
 
-import com.luxoft.bankapp.domain.*;
-
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class BankReport {
 
-    public static int getNumberOfClients(Bank bank) {
+    public int getNumberOfClients(Bank bank) {
         return bank.getClients().size();
     }
 
-    public static int getNumberOfAccounts(Bank bank) {
+    public int getNumberOfAccounts(Bank bank) {
         int count = 0;
         for (Client c : bank.getClients()) {
             count += c.getAccounts().size();
@@ -18,14 +24,13 @@ public class BankReport {
         return count;
     }
 
-    public static SortedSet<Client> getClientsSorted(Bank bank) {
-        SortedSet<Client> sorted =
-                new TreeSet<>(Comparator.comparing(Client::getName));
+    public SortedSet<Client> getClientsSorted(Bank bank) {
+        SortedSet<Client> sorted = new TreeSet<>(Comparator.comparing(Client::getName));
         sorted.addAll(bank.getClients());
-        return sorted;
+        return Collections.unmodifiableSortedSet(sorted);
     }
 
-    public static double getTotalSumInAccounts(Bank bank) {
+    public double getTotalSumInAccounts(Bank bank) {
         double sum = 0;
         for (Client c : bank.getClients()) {
             for (Account a : c.getAccounts()) {
@@ -35,47 +40,49 @@ public class BankReport {
         return sum;
     }
 
-    public static SortedSet<Account> getAccountsSortedBySum(Bank bank) {
-        SortedSet<Account> sorted =
-                new TreeSet<>(Comparator
-                        .comparingDouble(Account::getBalance)
-                        .thenComparingInt(Account::getId));
+    public SortedSet<Account> getAccountsSortedBySum(Bank bank) {
+        SortedSet<Account> sorted = new TreeSet<>(Comparator.comparingDouble(Account::getBalance));
         for (Client c : bank.getClients()) {
             sorted.addAll(c.getAccounts());
         }
-        return sorted;
+        return Collections.unmodifiableSortedSet(sorted);
     }
 
-    public static double getBankCreditSum(Bank bank) {
+    public double getBankCreditSum(Bank bank) {
         double credit = 0;
         for (Client c : bank.getClients()) {
             for (Account a : c.getAccounts()) {
                 if (a instanceof CheckingAccount) {
                     CheckingAccount ca = (CheckingAccount) a;
-                    credit += ca.getOverdraft();   // credit acordat = overdraft
+                    if (ca.getBalance() < 0) {
+                        credit += Math.abs(ca.getBalance());
+                    }
                 }
             }
         }
         return credit;
     }
 
-    public static Map<Client, Collection<Account>> getCustomerAccounts(Bank bank) {
-        Map<Client, Collection<Account>> map = new HashMap<>();
+    public Map<Client, Set<Account>> getCustomerAccounts(Bank bank) {
+        Map<Client, Set<Account>> map = new HashMap<>();
         for (Client c : bank.getClients()) {
             map.put(c, c.getAccounts());
         }
-        return map;
+        return Collections.unmodifiableMap(map);
     }
 
-    public static Map<String, List<Client>> getClientsByCity(Bank bank) {
-        Map<String, List<Client>> map = new TreeMap<>();
-
+    public Map<String, List<Client>> getClientsByCity(Bank bank) {
+        Map<String, List<Client>> map = new HashMap<>();
         for (Client c : bank.getClients()) {
             String city = c.getCity();
-            map.putIfAbsent(city, new ArrayList<>());
-            map.get(city).add(c);
+            if (city == null) continue;
+            map.computeIfAbsent(city, k -> new ArrayList<>()).add(c);
         }
-
-        return map;
+        SortedSet<String> sortedKeys = new TreeSet<>(map.keySet());
+        Map<String, List<Client>> sortedMap = new HashMap<>();
+        for (String key : sortedKeys) {
+            sortedMap.put(key, Collections.unmodifiableList(map.get(key)));
+        }
+        return Collections.unmodifiableMap(sortedMap);
     }
 }
