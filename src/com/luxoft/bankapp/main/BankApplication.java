@@ -1,130 +1,149 @@
 package com.luxoft.bankapp.main;
 
-import com.luxoft.bankapp.domain.*;
+import java.util.Map;
+import java.util.Scanner;
+
+import com.luxoft.bankapp.domain.Account;
+import com.luxoft.bankapp.domain.Bank;
+import com.luxoft.bankapp.domain.BankReport;
+import com.luxoft.bankapp.domain.CheckingAccount;
+import com.luxoft.bankapp.domain.Client;
+import com.luxoft.bankapp.domain.Gender;
+import com.luxoft.bankapp.domain.SavingAccount;
 import com.luxoft.bankapp.exceptions.ClientExistsException;
 import com.luxoft.bankapp.exceptions.NotEnoughFundsException;
 import com.luxoft.bankapp.exceptions.OverdraftLimitExceededException;
 import com.luxoft.bankapp.service.BankService;
 
-import java.util.Scanner;
-
 public class BankApplication {
 
-	private static Bank bank;
+    private static Bank bank;
 
-	public static void main(String[] args) {
-		bank = new Bank();
-		modifyBank();
+    public static void main(String[] args) {
+        bank = new Bank();
+        modifyBank();
 
-		if (args.length > 0 && "-statistics".equals(args[0])) {
-			runStatisticsMode();
-		} else {
-			printBalance();
-			BankService.printMaximumAmountToWithdraw(bank);
-		}
-	}
+        if (args.length > 0 && "-statistics".equals(args[0])) {
+            runStatisticsMode();
+        } else {
+            runNormalMode();
+        }
 
-	private static void runStatisticsMode() {
-		System.out.println("BankApplication started in statistics mode.");
-		System.out.println("Type 'display statistic' to show statistics or 'exit' to quit.");
+        bank.close();
+    }
 
-		Scanner scanner = new Scanner(System.in);
-		while (scanner.hasNextLine()) {
-			String command = scanner.nextLine().trim().toLowerCase();
+    private static void modifyBank() {
+        Client client1 = new Client("John", Gender.MALE);
+        Account account1 = new SavingAccount(1, 100);
+        Account account2 = new CheckingAccount(2, 100, 20);
+        client1.addAccount(account1);
+        client1.addAccount(account2);
 
-			if ("display statistic".equals(command)) {
-				printStatistics();
-			} else if ("exit".equals(command)) {
-				System.out.println("Exiting statistics mode.");
-				break;
-			} else if (!command.isEmpty()) {
-				System.out.println("Unknown command. Type 'display statistic' or 'exit'.");
-			}
-		}
-		scanner.close();
-	}
+        try {
+            BankService.addClient(bank, client1);
+        } catch (ClientExistsException e) {
+            System.out.format("Cannot add an already existing client: %s%n", client1.getName());
+        }
 
-	private static void printStatistics() {
-		System.out.println("\n=== BANK STATISTICS ===");
+        account1.deposit(100);
+        try {
+            account1.withdraw(10);
+        } catch (OverdraftLimitExceededException e) {
+            System.out.format(
+                    "Not enough funds for account %d, balance: %.2f, overdraft: %.2f, tried to extract amount: %.2f%n",
+                    e.getId(), e.getBalance(), e.getOverdraft(), e.getAmount());
+        } catch (NotEnoughFundsException e) {
+            System.out.format(
+                    "Not enough funds for account %d, balance: %.2f, tried to extract amount: %.2f%n",
+                    e.getId(), e.getBalance(), e.getAmount());
+        }
 
-		System.out.println("Number of clients: " +
-				BankReport.getNumberOfClients(bank));
+        try {
+            account2.withdraw(90);
+        } catch (OverdraftLimitExceededException e) {
+            System.out.format(
+                    "Not enough funds for account %d, balance: %.2f, overdraft: %.2f, tried to extract amount: %.2f%n",
+                    e.getId(), e.getBalance(), e.getOverdraft(), e.getAmount());
+        } catch (NotEnoughFundsException e) {
+            System.out.format(
+                    "Not enough funds for account %d, balance: %.2f, tried to extract amount: %.2f%n",
+                    e.getId(), e.getBalance(), e.getAmount());
+        }
 
-		System.out.println("Number of accounts: " +
-				BankReport.getNumberOfAccounts(bank));
+        try {
+            account2.withdraw(100);
+        } catch (OverdraftLimitExceededException e) {
+            System.out.format(
+                    "Not enough funds for account %d, balance: %.2f, overdraft: %.2f, tried to extract amount: %.2f%n",
+                    e.getId(), e.getBalance(), e.getOverdraft(), e.getAmount());
+        } catch (NotEnoughFundsException e) {
+            System.out.format(
+                    "Not enough funds for account %d, balance: %.2f, tried to extract amount: %.2f%n",
+                    e.getId(), e.getBalance(), e.getAmount());
+        }
 
-		System.out.println("Total sum in all accounts: " +
-				BankReport.getTotalSumInAccounts(bank));
+        try {
+            BankService.addClient(bank, client1);
+        } catch (ClientExistsException e) {
+            System.out.format("Cannot add an already existing client: %s%n", client1);
+        }
+    }
 
-		System.out.println("Total bank credit (overdraft granted): " +
-				BankReport.getBankCreditSum(bank));
+    private static void runNormalMode() {
+        printBalance();
+        BankService.printMaximumAmountToWithdraw(bank);
+    }
 
-		System.out.println("\nClients sorted by name:");
-		BankReport.getClientsSorted(bank).forEach(System.out::println);
+    private static void printBalance() {
+        System.out.format("%nPrint balance for all clients%n");
+        for (Client client : bank.getClients()) {
+            System.out.println("Client: " + client);
+            for (Account account : client.getAccounts()) {
+                System.out.format("Account %d : %.2f%n", account.getId(), account.getBalance());
+            }
+        }
+    }
 
-		System.out.println("\nAccounts sorted by balance:");
-		BankReport.getAccountsSortedBySum(bank).forEach(a ->
-				System.out.printf("Account %d : %.2f%n", a.getId(), a.getBalance()));
-	}
+    private static void runStatisticsMode() {
+        BankReport report = new BankReport();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Type 'display statistic' to show bank statistics or 'exit' to quit.");
 
-	private static void modifyBank() {
-		Client client1 = new Client("John", Gender.MALE, "Romania");
-		Account account1 = new SavingAccount(1, 100);
-		Account account2 = new CheckingAccount(2, 100, 20);
-		client1.addAccount(account1);
-		client1.addAccount(account2);
+        while (true) {
+            String line = scanner.nextLine();
+            if ("exit".equalsIgnoreCase(line)) {
+                break;
+            }
+            if ("display statistic".equalsIgnoreCase(line)) {
+                displayStatistics(report);
+            } else {
+                System.out.println("Unknown command. Type 'display statistic' or 'exit'.");
+            }
+        }
+    }
 
-		try {
-			BankService.addClient(bank, client1);
-		} catch(ClientExistsException e) {
-			System.out.format("Cannot add an already existing client: %s%n", client1.getName());
-		}
+    private static void displayStatistics(BankReport report) {
+        System.out.println("Number of clients: " + report.getNumberOfClients(bank));
+        System.out.println("Number of accounts: " + report.getNumberOfAccounts(bank));
+        System.out.println("Total sum in accounts: " + report.getTotalSumInAccounts(bank));
+        System.out.println("Bank credit sum: " + report.getBankCreditSum(bank));
 
-		account1.deposit(100);
-		try {
-			account1.withdraw(10);
-		} catch (OverdraftLimitExceededException e) {
-			System.out.format("Not enough funds for account %d, balance: %.2f, overdraft: %.2f, tried to extract amount: %.2f%n",
-					e.getId(), e.getBalance(), e.getOverdraft(), e.getAmount());
-		} catch (NotEnoughFundsException e) {
-			System.out.format("Not enough funds for account %d, balance: %.2f, tried to extract amount: %.2f%n",
-					e.getId(), e.getBalance(), e.getAmount());
-		}
+        System.out.println("Clients sorted:");
+        for (Client c : report.getClientsSorted(bank)) {
+            System.out.println("  " + c.getClientGreeting());
+        }
 
-		try {
-			account2.withdraw(90);
-		} catch (OverdraftLimitExceededException e) {
-			System.out.format("Not enough funds for account %d, balance: %.2f, overdraft: %.2f, tried to extract amount: %.2f%n",
-					e.getId(), e.getBalance(), e.getOverdraft(), e.getAmount());
-		} catch (NotEnoughFundsException e) {
-			System.out.format("Not enough funds for account %d, balance: %.2f, tried to extract amount: %.2f%n",
-					e.getId(), e.getBalance(), e.getAmount());
-		}
+        System.out.println("Accounts sorted by balance:");
+        for (Account a : report.getAccountsSortedBySum(bank)) {
+            System.out.println("  id=" + a.getId() + ", balance=" + a.getBalance());
+        }
 
-		try {
-			account2.withdraw(100);
-		} catch (OverdraftLimitExceededException e) {
-			System.out.format("Not enough funds for account %d, balance: %.2f, overdraft: %.2f, tried to extract amount: %.2f%n",
-					e.getId(), e.getBalance(), e.getOverdraft(), e.getAmount());
-		} catch (NotEnoughFundsException e) {
-			System.out.format("Not enough funds for account %d, balance: %.2f, tried to extract amount: %.2f%n",
-					e.getId(), e.getBalance(), e.getAmount());
-		}
-
-		try {
-			BankService.addClient(bank, client1);
-		} catch(ClientExistsException e) {
-			System.out.format("Cannot add an already existing client: %s%n", client1);
-		}
-	}
-
-	private static void printBalance() {
-		System.out.format("%nPrint balance for all clients%n");
-		for(Client client : bank.getClients()) {
-			System.out.println("Client: " + client);
-			for (Account account : client.getAccounts()) {
-				System.out.format("Account %d : %.2f%n", account.getId(), account.getBalance());
-			}
-		}
-	}
+        System.out.println("Clients by city:");
+        for (Map.Entry<String, java.util.List<Client>> entry : report.getClientsByCity(bank).entrySet()) {
+            System.out.println("City: " + entry.getKey());
+            for (Client c : entry.getValue()) {
+                System.out.println("  " + c.getName());
+            }
+        }
+    }
 }
